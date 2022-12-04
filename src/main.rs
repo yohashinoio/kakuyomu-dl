@@ -1,22 +1,28 @@
 use core::panic;
-use std::io::Write;
+use std::{io::Write, sync::Arc};
 
 static KAKUYOMU_HOST_URL: &str = "kakuyomu.jp";
 
-fn get_html(url: &str) -> Result<String, Box<dyn std::error::Error>> {
+fn create_dir(path: &str) {
+    match std::fs::create_dir_all(path) {
+        Err(why) => panic!("{}", why),
+        Ok(_) => {}
+    };
+}
+
+fn fetch_html(url: &str) -> Result<String, Box<dyn std::error::Error>> {
     Ok(reqwest::blocking::get(url)?.text()?)
 }
 
-fn is_valid_kakuyomu_url(url: &str) -> Result<(), &str> {
+fn verify_kakuyomu_url(url: &str) -> Result<(), &str> {
     let res = url::Url::parse(url);
 
-    // psd stands for parsed
-    let psd = match res {
+    let parsed = match res {
         Ok(psd) => psd,
         Err(_) => return Err("URL parsing failed"),
     };
 
-    if !psd.host_str().unwrap().contains(KAKUYOMU_HOST_URL) {
+    if !parsed.host_str().unwrap().contains(KAKUYOMU_HOST_URL) {
         return Err("Not a URL for Kakuyomu");
     };
 
@@ -24,7 +30,7 @@ fn is_valid_kakuyomu_url(url: &str) -> Result<(), &str> {
 }
 
 fn get_episode_urls(url: &str) -> Vec<String> {
-    let html = get_html(url);
+    let html = fetch_html(url);
 
     let html = match html {
         Ok(text) => text,
@@ -48,8 +54,8 @@ fn get_episode_urls(url: &str) -> Vec<String> {
     urls
 }
 
-fn get_worktitle(episode_list_url: &str) -> Option<String> {
-    let html = get_html(episode_list_url);
+fn get_worktitle(toc_url: &str) -> Option<String> {
+    let html = fetch_html(toc_url);
 
     let html = match html {
         Ok(text) => text,
@@ -85,58 +91,87 @@ fn get_episode_main_text(episode_html: &scraper::Html) -> String {
     main_text
 }
 
-fn create_dir(path: &str) {
-    match std::fs::create_dir(path) {
-        Err(why) => panic!("{}", why),
-        Ok(_) => {}
+fn download_episode(episode_url: &str, episode_idx: usize, output_dir: &str) {
+    let episode_doc = scraper::Html::parse_document(&match fetch_html(episode_url) {
+        Ok(text) => text,
+        Err(_) => panic!(
+            "Failed to parse episode document: episode '{}'",
+            episode_idx
+        ),
+    });
+
+    let episode_title = match get_episode_title(&episode_doc) {
+        Some(title) => title,
+        None => panic!("Failed to fetch episode title: episode '{}'", episode_idx),
+    };
+
+    let mut file = match std::fs::File::create(format!("{}/{}", output_dir, episode_title)) {
+        Ok(file) => file,
+        Err(_) => panic!("Failed to create episode file: episode '{}'", episode_idx),
+    };
+
+    match file.write_all(get_episode_main_text(&episode_doc).as_bytes()) {
+        Ok(_) => (),
+        Err(_) => panic!(
+            "Failed to write episode main text: episode '{}'",
+            episode_idx
+        ),
     };
 }
 
-fn main() {
-    let url = match std::env::args().nth(1) {
-        Some(arg) => arg,
-        None => panic!("Specify a URL as the first command line argument"),
-    };
+fn download_episodes(episode_urls: Vec<String>, output_dir: String) {
+    let output_dir = Arc::new(output_dir);
+    let pb = Arc::new(indicatif::ProgressBar::new(episode_urls.len() as u64));
 
-    match is_valid_kakuyomu_url(&url) {
-        Err(_) => panic!("Please specify a valid URL"),
-        Ok(_) => {}
-    };
+    let style = indicatif::ProgressStyle::with_template(
+        "[{elapsed_precise}] {bar:50.cyan/blue} {pos:>5}/{len:5} {msg}",
+    )
+    .unwrap()
+    .progress_chars("##>-");
 
-    let worktitle = match get_worktitle(&url) {
-        Some(t) => t,
+    pb.set_style(style);
+    pb.reset_eta();
+
+    let mut handles = vec![];
+
+    for (idx, url) in episode_urls.iter().cloned().enumerate() {
+        let output_dir = Arc::clone(&output_dir);
+        let pb = Arc::clone(&pb);
+
+        handles.push(std::thread::spawn(move || {
+            download_episode(&url, idx + 1, output_dir.as_str());
+            pb.inc(1);
+        }));
+    }
+
+    for handle in handles {
+        handle.join().unwrap();
+    }
+
+    pb.finish_with_message("Done!");
+}
+
+fn download_novel(toc_url: &str) {
+    let worktitle = match get_worktitle(&toc_url) {
+        Some(title) => title,
         None => panic!("Failed to fetch work title"),
     };
 
     create_dir(&worktitle);
 
-    for (idx, url) in get_episode_urls(&url).iter().enumerate() {
-        let episode_idx = idx + 1;
+    download_episodes(get_episode_urls(&toc_url), worktitle);
+}
 
-        let episode_doc = scraper::Html::parse_document(&match get_html(&url) {
-            Ok(text) => text,
-            Err(_) => panic!(
-                "Failed to parse episode document: episode '{}'",
-                episode_idx
-            ),
-        });
+fn main() {
+    let toc_url = match std::env::args().nth(1) {
+        Some(arg) => arg,
+        None => panic!("Specify a URL as the first command line argument"),
+    };
 
-        let episode_title = match get_episode_title(&episode_doc) {
-            Some(title) => title,
-            None => panic!("Failed to fetch episode title: episode '{}'", episode_idx),
-        };
+    match verify_kakuyomu_url(&toc_url) {
+        Err(_) => panic!("Please specify a valid URL"),
+        Ok(_) => {}
+    };
 
-        let mut file = match std::fs::File::create(format!("{}/{}", &worktitle, &episode_title)) {
-            Ok(file) => file,
-            Err(_) => panic!("Failed to create episode file: episode '{}'", episode_idx),
-        };
-
-        match file.write_all(get_episode_main_text(&episode_doc).as_bytes()) {
-            Ok(_) => (),
-            Err(_) => panic!(
-                "Failed to write episode main text: episode '{}'",
-                episode_idx
-            ),
-        };
-    }
+    download_novel(&toc_url);
 }
