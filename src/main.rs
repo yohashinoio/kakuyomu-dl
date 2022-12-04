@@ -91,7 +91,7 @@ fn get_episode_main_text(episode_html: &scraper::Html) -> String {
     main_text
 }
 
-fn download_episode(episode_url: &str, episode_idx: usize, output_dir: &str) {
+fn download_episode(episode_url: &str, episode_idx: usize, output_path: &str) {
     let episode_doc = scraper::Html::parse_document(&match fetch_html(episode_url) {
         Ok(text) => text,
         Err(_) => panic!(
@@ -105,7 +105,9 @@ fn download_episode(episode_url: &str, episode_idx: usize, output_dir: &str) {
         None => panic!("Failed to fetch episode title: episode '{}'", episode_idx),
     };
 
-    let mut file = match std::fs::File::create(format!("{}/{}", output_dir, episode_title)) {
+    let filename = format!("{}{}", episode_idx, episode_title);
+
+    let mut file = match std::fs::File::create(format!("{}/{}", output_path, filename)) {
         Ok(file) => file,
         Err(_) => panic!("Failed to create episode file: episode '{}'", episode_idx),
     };
@@ -119,8 +121,8 @@ fn download_episode(episode_url: &str, episode_idx: usize, output_dir: &str) {
     };
 }
 
-fn download_episodes(episode_urls: Vec<String>, output_dir: String) {
-    let output_dir = Arc::new(output_dir);
+fn download_episodes(episode_urls: Vec<String>, output_path: String) {
+    let output_path = Arc::new(output_path);
     let pb = Arc::new(indicatif::ProgressBar::new(episode_urls.len() as u64));
 
     let style = indicatif::ProgressStyle::with_template(
@@ -135,11 +137,11 @@ fn download_episodes(episode_urls: Vec<String>, output_dir: String) {
     let mut handles = vec![];
 
     for (idx, url) in episode_urls.iter().cloned().enumerate() {
-        let output_dir = Arc::clone(&output_dir);
+        let output_path = Arc::clone(&output_path);
         let pb = Arc::clone(&pb);
 
         handles.push(std::thread::spawn(move || {
-            download_episode(&url, idx + 1, output_dir.as_str());
+            download_episode(&url, idx + 1, output_path.as_str());
             pb.inc(1);
         }));
     }
@@ -157,9 +159,11 @@ fn download_novel(toc_url: &str) {
         None => panic!("Failed to fetch work title"),
     };
 
-    create_dir(&worktitle);
+    let output_path = format!("output/{}", worktitle);
 
-    download_episodes(get_episode_urls(&toc_url), worktitle);
+    create_dir(&output_path);
+
+    download_episodes(get_episode_urls(&toc_url), output_path);
 }
 
 fn main() {
