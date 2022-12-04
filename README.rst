@@ -2,9 +2,8 @@
 RustとCargoのインストール
 -------------------------
 
-.. code-block:: bash
-
-  $ curl https://sh.rustup.rs -sSf | sh
+`公式サイト <https://www.rust-lang.org/ja/tools/install>`_
+からインストールしてください。
 
 ------------
 インストール
