@@ -9,6 +9,7 @@ Cargoをインストール済みの前提で話を進めます。
 .. code-block:: bash
 
   $ git clone https://github.com/yohashinoio/kakuyomu-dl.git
+  $ cd kakuyomu-dl
 
 第一引数として、ダウンロードしたい小説の目次のURLを渡し、実行します。
 
