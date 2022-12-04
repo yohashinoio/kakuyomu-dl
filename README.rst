@@ -1,21 +1,29 @@
-Cargoをインストール済みの前提で話を進めます。
+-------------------------
+RustとCargoのインストール
+-------------------------
 
---------
-使用方法
---------
+.. code-block:: bash
 
-まず、このリポジトリをクローンします。
+  $ curl https://sh.rustup.rs -sSf | sh
+
+------------
+インストール
+------------
 
 .. code-block:: bash
 
   $ git clone https://github.com/yohashinoio/kakuyomu-dl.git
   $ cd kakuyomu-dl
 
-第一引数として、ダウンロードしたい小説の目次のURLを渡し、実行します。
+--------
+使用方法
+--------
+
+第一引数に、ダウンロードしたい小説の目次のURLを渡します。
 
 .. code-block:: bash
 
-  $ cargo run https://kakuyomu.jp/works/123456
+  $ cargo run --release https://kakuyomu.jp/works/123456
 
 --------
 実行結果
@@ -28,4 +36,5 @@ Cargoをインストール済みの前提で話を進めます。
 ----------
 ライセンス
 ----------
-Apache-2.0です。
+
+Apache License 2.0 です。
