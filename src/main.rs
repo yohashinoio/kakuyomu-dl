@@ -14,19 +14,17 @@ fn fetch_html(url: &str) -> Result<String, Box<dyn std::error::Error>> {
     Ok(reqwest::blocking::get(url)?.text()?)
 }
 
-fn verify_kakuyomu_url(url: &str) -> Result<(), &str> {
+fn verify_kakuyomu_url(url: &str) {
     let res = url::Url::parse(url);
 
     let parsed = match res {
         Ok(psd) => psd,
-        Err(_) => return Err("URL parsing failed"),
+        Err(_) => panic!("Failed to parse the URL"),
     };
 
     if !parsed.host_str().unwrap().contains(KAKUYOMU_HOST_URL) {
-        return Err("Not a URL for Kakuyomu");
+        panic!("Not a URL for Kakuyomu");
     };
-
-    Ok(())
 }
 
 fn get_episode_urls(url: &str) -> Vec<String> {
@@ -105,7 +103,7 @@ fn download_episode(episode_url: &str, episode_idx: usize, output_path: &str) {
         None => panic!("Failed to fetch episode title: episode '{}'", episode_idx),
     };
 
-    let filename = format!("{}{}", episode_idx, episode_title);
+    let filename = format!("{} {}", episode_idx, episode_title);
 
     let mut file = match std::fs::File::create(format!("{}/{}", output_path, filename)) {
         Ok(file) => file,
@@ -172,10 +170,7 @@ fn main() {
         None => panic!("Specify a URL as the first command line argument"),
     };
 
-    match verify_kakuyomu_url(&toc_url) {
-        Err(_) => panic!("Please specify a valid URL"),
-        Ok(_) => {}
-    };
+    verify_kakuyomu_url(&toc_url);
 
     download_novel(&toc_url);
 }
