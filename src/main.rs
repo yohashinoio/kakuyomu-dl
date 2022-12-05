@@ -134,7 +134,7 @@ fn download_episodes(episode_urls: Vec<String>, output_path: String) {
 
     let mut handles = vec![];
 
-    for (idx, url) in episode_urls.iter().cloned().enumerate() {
+    for (idx, url) in episode_urls.into_iter().enumerate() {
         let output_path = Arc::clone(&output_path);
         let pb = Arc::clone(&pb);
 
