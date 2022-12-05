@@ -1,9 +1,11 @@
 use core::panic;
 use std::{io::Write, sync::Arc};
 
+use camino::Utf8PathBuf;
+
 static KAKUYOMU_HOST_URL: &str = "kakuyomu.jp";
 
-fn create_dir(path: &str) {
+fn create_dir(path: &Utf8PathBuf) {
     match std::fs::create_dir_all(path) {
         Err(why) => panic!("{}", why),
         Ok(_) => {}
@@ -89,33 +91,27 @@ fn get_episode_main_text(episode_html: &scraper::Html) -> String {
     main_text
 }
 
-fn download_episode(episode_url: &str, episode_idx: usize, output_path: &str) {
+fn download_episode(episode_url: &str, episode_idx: usize, output_path: &Utf8PathBuf) {
     let episode_doc = scraper::Html::parse_document(&match fetch_html(episode_url) {
         Ok(text) => text,
-        Err(_) => panic!(
-            "Failed to parse episode document: episode '{}'",
-            episode_idx
-        ),
+        Err(err) => panic!("{}: '{}'", err, episode_idx),
     });
 
     let episode_title = match get_episode_title(&episode_doc) {
         Some(title) => title,
-        None => panic!("Failed to fetch episode title: episode '{}'", episode_idx),
+        None => panic!("Failed to get episode title: '{}'", episode_idx),
     };
 
-    let filename = format!("{} {}", episode_idx, episode_title);
+    let filename = format!("{} {}.txt", episode_idx, episode_title);
 
-    let mut file = match std::fs::File::create(format!("{}/{}", output_path, filename)) {
+    let mut file = match std::fs::File::create(output_path.join(filename)) {
         Ok(file) => file,
-        Err(_) => panic!("Failed to create episode file: episode '{}'", episode_idx),
+        Err(err) => panic!("{}: '{}'", err, episode_idx),
     };
 
     match file.write_all(get_episode_main_text(&episode_doc).as_bytes()) {
         Ok(_) => (),
-        Err(_) => panic!(
-            "Failed to write episode main text: episode '{}'",
-            episode_idx
-        ),
+        Err(err) => panic!("{}: '{}'", err, episode_idx),
     };
 }
 
@@ -127,7 +123,7 @@ fn create_pb_style() -> indicatif::ProgressStyle {
     .progress_chars("##>-")
 }
 
-fn download_episodes(episode_urls: Vec<String>, output_path: String) {
+fn download_episodes(episode_urls: Vec<String>, output_path: Utf8PathBuf) {
     let pb = Arc::new(indicatif::ProgressBar::new(episode_urls.len() as u64));
     let output_path = Arc::new(output_path);
 
@@ -137,11 +133,11 @@ fn download_episodes(episode_urls: Vec<String>, output_path: String) {
     pb.reset_eta();
 
     for (idx, url) in episode_urls.into_iter().enumerate() {
-        let pb = Arc::clone(&pb);
-        let output_path = Arc::clone(&output_path);
+        let pb = pb.clone();
+        let output_path = output_path.clone();
 
         handles.push(std::thread::spawn(move || {
-            download_episode(&url, idx + 1, output_path.as_str());
+            download_episode(&url, idx + 1, &output_path);
             pb.inc(1);
         }));
     }
@@ -159,7 +155,7 @@ fn download_novel(toc_url: &str) {
         None => panic!("Failed to fetch work title"),
     };
 
-    let output_path = format!("output/{}", worktitle);
+    let output_path = Utf8PathBuf::from("output").join(worktitle);
 
     create_dir(&output_path);
 
