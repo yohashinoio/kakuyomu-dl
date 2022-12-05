@@ -37,7 +37,7 @@ fn get_episode_urls(url: &str) -> Vec<String> {
 
     let document = scraper::Html::parse_document(&html);
 
-    let mut urls: Vec<String> = Vec::new();
+    let mut urls = Vec::new();
 
     for node in
         document.select(&scraper::Selector::parse(".widget-toc-episode-episodeTitle").unwrap())
@@ -132,7 +132,7 @@ fn download_episodes(episode_urls: Vec<String>, output_path: String) {
     pb.set_style(style);
     pb.reset_eta();
 
-    let mut handles = vec![];
+    let mut handles = Vec::new();
 
     for (idx, url) in episode_urls.into_iter().enumerate() {
         let output_path = Arc::clone(&output_path);
