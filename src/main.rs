@@ -119,24 +119,26 @@ fn download_episode(episode_url: &str, episode_idx: usize, output_path: &str) {
     };
 }
 
-fn download_episodes(episode_urls: Vec<String>, output_path: String) {
-    let output_path = Arc::new(output_path);
-    let pb = Arc::new(indicatif::ProgressBar::new(episode_urls.len() as u64));
-
-    let style = indicatif::ProgressStyle::with_template(
+fn create_pb_style() -> indicatif::ProgressStyle {
+    indicatif::ProgressStyle::with_template(
         "[{elapsed_precise}] {bar:50.cyan/blue} {pos:>5}/{len:5} {msg}",
     )
     .unwrap()
-    .progress_chars("##>-");
+    .progress_chars("##>-")
+}
 
-    pb.set_style(style);
-    pb.reset_eta();
+fn download_episodes(episode_urls: Vec<String>, output_path: String) {
+    let pb = Arc::new(indicatif::ProgressBar::new(episode_urls.len() as u64));
+    let output_path = Arc::new(output_path);
 
     let mut handles = Vec::new();
 
+    pb.set_style(create_pb_style());
+    pb.reset_eta();
+
     for (idx, url) in episode_urls.into_iter().enumerate() {
-        let output_path = Arc::clone(&output_path);
         let pb = Arc::clone(&pb);
+        let output_path = Arc::clone(&output_path);
 
         handles.push(std::thread::spawn(move || {
             download_episode(&url, idx + 1, output_path.as_str());
@@ -165,6 +167,7 @@ fn download_novel(toc_url: &str) {
 }
 
 fn main() {
+    // URL to table of contents
     let toc_url = match std::env::args().nth(1) {
         Some(arg) => arg,
         None => panic!("Specify a URL as the first command line argument"),
