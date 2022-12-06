@@ -1,16 +1,10 @@
 use std::sync::Arc;
 
 use anyhow::{anyhow, Result};
-use indicatif::{ProgressBar, ProgressStyle};
+use indicatif::ProgressBar;
 use scraper::Html;
 
 use crate::{request::fetch_html, utils::KAKUYOMU_URL_HOST};
-
-fn create_prog_style() -> ProgressStyle {
-    ProgressStyle::with_template("[{elapsed_precise}] {bar:50.cyan/blue} {pos:>5}/{len:5} {msg}")
-        .unwrap()
-        .progress_chars("##>-")
-}
 
 #[derive(Debug)]
 pub struct Novel {
@@ -27,22 +21,29 @@ impl Novel {
         &self.episodes
     }
 
-    pub fn parse(toc_url: &str) -> Result<Novel> {
+    pub fn parse(toc_url: &str, pb: &Arc<ProgressBar>) -> Result<Novel> {
         let toc_doc = scraper::Html::parse_document(&fetch_html(toc_url)?);
 
+        let worktitle = Self::parse_worktitle(&toc_doc)?;
+
         Ok(Novel {
-            worktitle: Self::parse_worktitle(&toc_doc)?,
-            episodes: Self::parse_episodes(&toc_doc)?,
+            episodes: Self::parse_episodes(&toc_doc, &worktitle, pb)?,
+            worktitle: worktitle,
         })
     }
 
-    fn parse_episodes(toc_doc: &Html) -> Result<Vec<Episode>> {
+    // The length of the ProgressBar is set within this function
+    fn parse_episodes(
+        toc_doc: &Html,
+        worktitle: &str,
+        pb: &Arc<ProgressBar>,
+    ) -> Result<Vec<Episode>> {
         let episode_urls = Self::parse_episode_urls(&toc_doc)?;
 
         let mut episodes = Vec::new();
 
-        let pb = Arc::new(ProgressBar::new(episode_urls.len() as u64));
-        pb.set_style(create_prog_style());
+        pb.set_length(episode_urls.len() as u64);
+        pb.set_message(worktitle.to_string());
 
         let mut handles = Vec::new();
 
