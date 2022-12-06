@@ -18,11 +18,23 @@ RustとCargoのインストール
 使用方法
 --------
 
+========================
+一つの小説をダウンロード
+========================
+
 第一引数に、ダウンロードしたい小説の目次のURLを渡します。
 
 .. code-block:: bash
 
   $ cargo run --release https://kakuyomu.jp/works/123456
+
+=========================
+複数の小説をダウンロード
+=========================
+
+.. code-block:: bash
+
+  $ cargo run --release https://kakuyomu.jp/works/123 https://kakuyomu.jp/works/456 https://kakuyomu.jp/works/789
 
 --------
 実行結果
