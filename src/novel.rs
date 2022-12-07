@@ -21,12 +21,12 @@ impl Novel {
         &self.episodes
     }
 
-    pub fn parse(toc_url: &str, pb: &Arc<ProgressBar>) -> Result<Novel> {
+    pub fn parse(toc_url: &str, pb: &Arc<ProgressBar>) -> Result<Self> {
         let toc_doc = scraper::Html::parse_document(&fetch_html(toc_url)?);
 
         let worktitle = Self::parse_worktitle(&toc_doc)?;
 
-        Ok(Novel {
+        Ok(Self {
             episodes: Self::parse_episodes(&toc_doc, &worktitle, pb)?,
             worktitle: worktitle,
         })
@@ -113,10 +113,10 @@ impl Episode {
         &self.main_text
     }
 
-    pub fn parse(url: &str, idx: usize) -> Result<Episode> {
+    pub fn parse(url: &str, idx: usize) -> Result<Self> {
         let doc = scraper::Html::parse_document(&fetch_html(url)?);
 
-        Ok(Episode {
+        Ok(Self {
             idx,
             title: Self::parse_title(&doc)?,
             main_text: Self::parse_main_text(&doc),
