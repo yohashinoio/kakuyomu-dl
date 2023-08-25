@@ -45,22 +45,14 @@ impl Novel {
         pb.set_length(episode_urls.len() as u64);
         pb.set_message(worktitle.to_string());
 
-        let mut handles = Vec::new();
-
         for (idx, url) in episode_urls.into_iter().enumerate() {
             let pb = pb.clone();
 
             let episode_idx = idx + 1;
 
-            handles.push(std::thread::spawn(move || -> Result<Episode> {
-                let ep = Episode::parse(&url, episode_idx)?;
-                pb.inc(1);
-                Ok(ep)
-            }));
-        }
-
-        for handle in handles {
-            episodes.push(handle.join().unwrap()?);
+            let ep = Episode::parse(&url, episode_idx)?;
+            episodes.push(ep);
+            pb.inc(1);
         }
 
         pb.finish_with_message("Done!");
