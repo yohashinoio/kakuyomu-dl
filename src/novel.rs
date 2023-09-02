@@ -1,63 +1,32 @@
-use std::sync::Arc;
-
 use anyhow::{anyhow, Result};
-use indicatif::ProgressBar;
 use scraper::Html;
 
 use crate::{request::fetch_html, utils::KAKUYOMU_URL_HOST};
 
 #[derive(Debug)]
-pub struct Novel {
+pub struct NovelInfo {
     worktitle: String,
-    episodes: Vec<Episode>,
+    episode_urls: Vec<String>,
 }
 
-impl Novel {
+impl NovelInfo {
     pub fn get_worktitle(&self) -> &str {
         &self.worktitle
     }
 
-    pub fn get_episodes(&self) -> &Vec<Episode> {
-        &self.episodes
+    pub fn get_episode_urls(&self) -> &Vec<String> {
+        &self.episode_urls
     }
 
-    pub fn parse(toc_url: &str, pb: &Arc<ProgressBar>) -> Result<Self> {
+    pub fn fetch(toc_url: &str) -> Result<Self> {
         let toc_doc = scraper::Html::parse_document(&fetch_html(toc_url)?);
 
         let worktitle = Self::parse_worktitle(&toc_doc)?;
 
         Ok(Self {
-            episodes: Self::parse_episodes(&toc_doc, &worktitle, pb)?,
-            worktitle: worktitle,
+            episode_urls: Self::parse_episode_urls(&toc_doc)?,
+            worktitle,
         })
-    }
-
-    // The length of the ProgressBar is set within this function
-    fn parse_episodes(
-        toc_doc: &Html,
-        worktitle: &str,
-        pb: &Arc<ProgressBar>,
-    ) -> Result<Vec<Episode>> {
-        let episode_urls = Self::parse_episode_urls(&toc_doc)?;
-
-        let mut episodes = Vec::new();
-
-        pb.set_length(episode_urls.len() as u64);
-        pb.set_message(worktitle.to_string());
-
-        for (idx, url) in episode_urls.into_iter().enumerate() {
-            let pb = pb.clone();
-
-            let episode_idx = idx + 1;
-
-            let ep = Episode::parse(&url, episode_idx)?;
-            episodes.push(ep);
-            pb.inc(1);
-        }
-
-        pb.finish_with_message("Done!");
-
-        Ok(episodes)
     }
 
     fn parse_episode_urls(toc_doc: &Html) -> Result<Vec<String>> {
@@ -69,7 +38,7 @@ impl Novel {
             urls.push(format!(
                 "https://{}{}",
                 KAKUYOMU_URL_HOST,
-                node.value().attr("href").unwrap().to_string()
+                node.value().attr("href").unwrap()
             ));
         }
 
@@ -77,7 +46,10 @@ impl Novel {
     }
 
     fn parse_worktitle(toc_doc: &Html) -> Result<String> {
-        for node in toc_doc.select(&scraper::Selector::parse("#workTitle").unwrap()) {
+        if let Some(node) = toc_doc
+            .select(&scraper::Selector::parse("#workTitle").unwrap())
+            .next()
+        {
             return Ok(node.text().collect::<Vec<&str>>()[0].to_string());
         }
 
@@ -105,7 +77,7 @@ impl Episode {
         &self.main_text
     }
 
-    pub fn parse(url: &str, idx: usize) -> Result<Self> {
+    pub fn fetch(url: &str, idx: usize) -> Result<Self> {
         let doc = scraper::Html::parse_document(&fetch_html(url)?);
 
         Ok(Self {
@@ -116,7 +88,10 @@ impl Episode {
     }
 
     fn parse_title(doc: &Html) -> Result<String> {
-        for node in doc.select(&scraper::Selector::parse(".widget-episodeTitle").unwrap()) {
+        if let Some(node) = doc
+            .select(&scraper::Selector::parse(".widget-episodeTitle").unwrap())
+            .next()
+        {
             return Ok(node.text().collect::<Vec<&str>>()[0].to_string());
         }
 
