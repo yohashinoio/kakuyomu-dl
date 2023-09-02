@@ -15,20 +15,20 @@ use utils::verify_url;
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
 struct Args {
-    #[arg(long, help = "add episode numbers to the front of output file names")]
+    #[arg(long, help = "出力されるファイル名の先頭にエピソード番号を付与します")]
     output_with_index: bool,
 
     #[arg(
         long,
         short,
-        help = "at which episode does the download begin? (beginning 1)"
+        help = "どのエピソードからダウンロードを始めるか指定できます (1始まり)"
     )]
     begin: Option<i32>,
 
     #[arg(
         long,
         short,
-        help = "at which episode does the download end? (beginning 1)"
+        help = "どのエピソードまでダウンロードするか指定できます (1始まり)"
     )]
     end: Option<i32>,
 
