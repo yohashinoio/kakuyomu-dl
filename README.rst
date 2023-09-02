@@ -52,6 +52,16 @@ RustとCargoのインストール
 
   $ cargo run --release https://kakuyomu.jp/works/123 https://kakuyomu.jp/works/456 https://kakuyomu.jp/works/789
 
+==========
+オプション
+==========
+
+helpをご確認ください。
+
+.. code-block:: bash
+
+  $ cargo run --release -- --help
+
 --------
 実行結果
 --------
