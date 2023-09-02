@@ -14,8 +14,8 @@ fn create_dir(path: &Utf8PathBuf) -> Result<()> {
 
 pub struct DownloadOptions {
     pub output_with_index: bool,
-    pub begin_episode: Option<i32>,
-    pub end_episode: Option<i32>,
+    pub start: Option<i32>,
+    pub finish: Option<i32>,
 }
 
 // ep stands for episode
@@ -45,21 +45,20 @@ pub fn dl_novel(novel: &NovelInfo, options: &DownloadOptions, pb: &Arc<ProgressB
 
     let episode_urls = novel.get_episode_urls();
 
-    let begin_episode = options.begin_episode.unwrap_or(1);
-    let end_episode = options.end_episode.unwrap_or(episode_urls.len() as i32);
-
-    let pb_len = end_episode - begin_episode + 1;
-    if pb_len <= 0 {
-        return Err(anyhow!("Make sure that 'begin' may be larger than 'end'"));
-    }
-
-    pb.set_length(pb_len as u64);
     pb.set_message(novel.get_worktitle().to_string());
 
-    let mut idx = begin_episode;
+    let start_idx = options.start.unwrap_or(1);
+    let finish_idx = options.finish.unwrap_or(episode_urls.len() as i32);
 
+    let pb_len = finish_idx - start_idx + 1;
+    if pb_len <= 0 {
+        return Err(anyhow!("'start'が'finish'よりも大きい可能性があります"));
+    }
+    pb.set_length(pb_len as u64);
+
+    let mut idx = start_idx;
     loop {
-        if end_episode < idx {
+        if finish_idx < idx {
             break;
         }
 

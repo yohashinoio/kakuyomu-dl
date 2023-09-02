@@ -23,14 +23,14 @@ struct Args {
         short,
         help = "どのエピソードからダウンロードを始めるか指定できます (1始まり)"
     )]
-    begin: Option<i32>,
+    start: Option<i32>,
 
     #[arg(
         long,
         short,
         help = "どのエピソードまでダウンロードするか指定できます (1始まり)"
     )]
-    end: Option<i32>,
+    finish: Option<i32>,
 
     #[arg(value_name = "URL")]
     urls: Vec<String>,
@@ -69,8 +69,8 @@ fn main() -> Result<()> {
                 &NovelInfo::fetch(&toc_url)?,
                 &DownloadOptions {
                     output_with_index,
-                    begin_episode: args.begin,
-                    end_episode: args.end,
+                    start: args.start,
+                    finish: args.finish,
                 },
                 &pb,
             )?;
